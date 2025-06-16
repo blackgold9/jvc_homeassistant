@@ -1,18 +1,15 @@
 {
-  "domain": "jvc_projectors",
+  "domain": "jvc_projector",
   "name": "JVC Projector",
-  "config_flow": false,
+  "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/jvc_projector",
-  "requirements": [
-    "pyjvc==5.0.1"
-  ],
-  "ssdp": [],
-  "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
-  "codeowners": [
-    "@iloveicedgreentea"
-  ],
+  "integration_type": "device",
   "iot_class": "local_polling",
-  "version": "5.0.1"
+  "loggers": [
+    "jvcprojector"
+  ],
+  "requirements": [
+    "pyjvcprojector_test==1.1.6"
+  ],
+  "version": "0.1.0"
 }
