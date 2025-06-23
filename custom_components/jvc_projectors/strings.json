@@ -239,6 +239,9 @@
           "hdr10": "HDR10",
           "hlg": "HLG"
         }
+      },
+      "jvc_resolution": {
+        "name": "Resolution"
       }
     }
   }

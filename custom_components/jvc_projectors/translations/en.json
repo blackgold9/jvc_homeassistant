@@ -172,6 +172,9 @@
                     "sdr": "SDR"
                 }
             },
+            "jvc_resolution": {
+                "name": "Resolution"
+            },
             "jvc_hdr_mode": {
                 "name": "HDR mode",
                 "state": {

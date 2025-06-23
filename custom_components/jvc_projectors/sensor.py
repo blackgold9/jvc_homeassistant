@@ -128,6 +128,12 @@ JVC_SENSORS = (
         options=["0", "1", "2", "3"],  # translated
         enabled_default=False,
     ),
+    JVCSensorEntityDescription(
+        key=const.KEY_RESOLUTION,
+        translation_key="jvc_resolution",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        enabled_default=False,
+    ),
 )
 
 
