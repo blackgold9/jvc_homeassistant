@@ -9,7 +9,7 @@
     "jvcprojector"
   ],
   "requirements": [
-    "pyjvcprojector_test==1.1.6"
+    "pyjvcprojector_test==1.1.7"
   ],
   "version": "0.1.0"
 }
