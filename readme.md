@@ -2,7 +2,7 @@
 
 This is a rewrite of the JVC Integration that is in core. It adds a ton of features that were in my previous custom integration. It was originally meant to be in core, but I don't have time to deal with their review process. So this is a custom component that you can install via HACS.
 
-It is based on changes to the [official library](https://github.com/SteveEasley/pyjvcprojector/pull/5)
+It is using my fork of the [core library](https://github.com/iloveicedgreentea/pyjvcprojector)
 
 ## Features
 
