@@ -25,7 +25,13 @@ _LOGGER = logging.getLogger(__name__)
 
 JVCConfigEntry = ConfigEntry[JvcProjectorDataUpdateCoordinator]
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.REMOTE, Platform.SELECT, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.REMOTE,
+    Platform.SELECT,
+    Platform.SENSOR,
+]
 
 
 

@@ -11,7 +11,7 @@ COMMANDS = {
     "power": command.Power,
     "input": command.Input,
     "picture_mode": command.PictureMode,
-    "laser_power": command.LightPower, # Maps to LightPower (High/Low) to match v1 behavior
+    "laser_power": command.LaserPower,
     "light_power": command.LightPower,
     "eshift": command.EShift,
     "installation_mode": command.InstallationMode,

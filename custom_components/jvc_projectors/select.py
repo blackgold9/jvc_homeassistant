@@ -30,7 +30,7 @@ OPTIONS: Final[dict[str, list[str]]] = {
     "eshift": const.VAL_ESHIFT,
     "installation_mode": const.VAL_INSTALLATION_MODE,
     "anamorphic": const.VAL_ANAMORPHIC,
-    "laser_power": const.VAL_LIGHT_POWER,
+    "light_power": const.VAL_LIGHT_POWER,
     "laser_dimming": const.VAL_LASER_DIMMING,
     "picture_mode": const.VAL_PICTURE_MODE,
 }
