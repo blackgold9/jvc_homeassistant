@@ -8,15 +8,14 @@ from datetime import datetime
 import logging
 from typing import Any
 
-from jvcprojector import const
-from jvcprojector.projector import JvcProjectorConnectError
+from jvcprojector import command, error
 
 from homeassistant.components.remote import RemoteEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import JVCConfigEntry
-from .const import REMOTE_COMMANDS
+from .const import REMOTE_COMMANDS, COMMANDS
 from .entity import JvcProjectorEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,7 +47,8 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
     @property
     def is_on(self) -> bool:
         """Return True if entity is on."""
-        return self.coordinator.data.get("power", const.STANDBY) in [const.ON, const.WARMING]
+        # Check against command.Power constants
+        return self.coordinator.data.get("power", command.Power.STANDBY) in [command.Power.ON, command.Power.WARMING]
 
     async def _apply_command_rate_limit(self, is_power_command: bool = False) -> None:
         """Apply rate limiting between commands."""
@@ -91,7 +91,7 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
                 )
                 return
                 
-            except JvcProjectorConnectError as err:
+            except error.JvcProjectorError as err:
                 last_error = err
                 _LOGGER.warning(
                     "Connection error executing %s for %s (attempt %d/%d): %s",
@@ -131,7 +131,7 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
             
             try:
                 await self._execute_command_with_retry(
-                    self.device.power_on,
+                    lambda: self.device.set(command.Power, command.Power.ON),
                     "power_on"
                 )
                 
@@ -165,7 +165,7 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
             
             try:
                 await self._execute_command_with_retry(
-                    self.device.power_off,
+                    lambda: self.device.set(command.Power, command.Power.OFF),
                     "power_off"
                 )
                 
@@ -221,10 +221,16 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
                             f"remote_{value}"
                         )
                     else:
-                        await self._execute_command_with_retry(
-                            lambda: self.device.send_command(cmd_name, value),
-                            f"{cmd_name}_{value}"
-                        )
+                        # Check if it's a known command class
+                        if cmd_name in COMMANDS:
+                            cmd_cls = COMMANDS[cmd_name]
+                            await self._execute_command_with_retry(
+                                lambda: self.device.set(cmd_cls, value),
+                                f"{cmd_name}_{value}"
+                            )
+                        else:
+                             _LOGGER.error("Unknown command: %s", cmd_name)
+                             raise ValueError(f"Unknown command: {cmd_name}")
                         
                 except Exception as err:
                     _LOGGER.error(
