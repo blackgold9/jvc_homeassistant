@@ -7,8 +7,8 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from jvcprojector.device import JvcProjectorAuthError
-from jvcprojector.projector import DEFAULT_PORT, JvcProjector, JvcProjectorConnectError
+from jvcprojector import command, error
+from jvcprojector.projector import DEFAULT_PORT, JvcProjector
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
@@ -52,10 +52,10 @@ class JvcProjectorConfigFlow(ConfigFlow, domain=DOMAIN):
             except asyncio.TimeoutError:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error("Timeout connecting to %s:%d", host, port)
-            except JvcProjectorConnectError as err:
+            except error.JvcProjectorError as err:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error("Failed to connect to %s:%d - %s", host, port, err)
-            except JvcProjectorAuthError:
+            except error.JvcProjectorAuthError:
                 errors["base"] = "invalid_auth"
                 _LOGGER.error("Authentication failed for %s:%d", host, port)
             except Exception as err:
@@ -128,12 +128,12 @@ class JvcProjectorConfigFlow(ConfigFlow, domain=DOMAIN):
             except asyncio.TimeoutError:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error("Timeout connecting to %s:%d during reauth", host, port)
-            except JvcProjectorConnectError as err:
+            except error.JvcProjectorError as err:
                 errors["base"] = "cannot_connect"
                 _LOGGER.error(
                     "Failed to connect to %s:%d during reauth - %s", host, port, err
                 )
-            except JvcProjectorAuthError:
+            except error.JvcProjectorAuthError:
                 errors["base"] = "invalid_auth"
                 _LOGGER.error("Authentication failed for %s:%d during reauth", host, port)
             except Exception as err:
@@ -173,15 +173,22 @@ async def get_mac_address(host: str, port: int, password: str | None) -> str:
     try:
         # Add timeout to prevent hanging
         await asyncio.wait_for(
-            device.connect(True),
+            device.connect(),
             timeout=CONNECTION_TIMEOUT
         )
         
-        if not device.mac:
-            raise JvcProjectorConnectError("Device did not provide MAC address")
+        # Use command class to get MAC
+        try:
+            mac = await device.get(command.MacAddress)
+        except error.JvcProjectorError:
+             # Try fallback to legacy method if property exists (unlikely in v2 but safe)
+             mac = getattr(device, "mac", None)
+
+        if not mac:
+            raise error.JvcProjectorError("Device did not provide MAC address")
             
         _LOGGER.debug("Successfully retrieved MAC address from %s:%d", host, port)
-        return device.mac
+        return mac
         
     except asyncio.TimeoutError:
         _LOGGER.error("Timeout getting MAC address from %s:%d", host, port)
