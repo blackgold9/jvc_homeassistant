@@ -13,7 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const, capabilities
 from .entity import JvcProjectorEntity
 
 
@@ -29,7 +29,7 @@ NUMBERS: Final[tuple[JvcProjectorNumberDescription, ...]] = (
         key="laser_power",
         translation_key="jvc_laser_power",
         native_min_value=0,
-        native_max_value=46,
+        native_max_value=100,
         native_step=1,
         command=command.LaserPower,
     ),
@@ -44,9 +44,12 @@ async def async_setup_entry(
     """Set up the JVC Projector number platform from a config entry."""
     coordinator = entry.runtime_data
 
-    async_add_entities(
-        JvcProjectorNumber(coordinator, description) for description in NUMBERS
-    )
+    entities = []
+    for description in NUMBERS:
+        if capabilities.is_command_supported(description.command, coordinator.spec):
+            entities.append(JvcProjectorNumber(coordinator, description))
+
+    async_add_entities(entities)
 
 
 class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
@@ -71,12 +74,14 @@ class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
         value = self.coordinator.data.get(self.entity_description.key)
         if value is not None:
             try:
-                return float(value)
+                # Value from device is 0.0-1.0, convert to 0-100
+                return int(float(value) * 100)
             except ValueError:
                 return None
         return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        await self.device.set(self.entity_description.command, int(value))
+        # Value from UI is 0-100, convert to 0.0-1.0
+        await self.device.set(self.entity_description.command, value / 100.0)
         # We might want to trigger a refresh or optimistically update

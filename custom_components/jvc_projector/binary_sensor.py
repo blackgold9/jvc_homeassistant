@@ -14,7 +14,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const, capabilities
 from .entity import JvcProjectorEntity
 
 
@@ -59,9 +59,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up the JVC Projector binary sensor platform from a config entry."""
     coordinator = entry.runtime_data
-    async_add_entities(
-        JvcBinarySensor(coordinator, description) for description in JVC_BINARY_SENSORS
-    )
+    entities = []
+
+    for description in JVC_BINARY_SENSORS:
+        cmd_cls = const.COMMANDS.get(description.key)
+        if cmd_cls and not capabilities.is_command_supported(cmd_cls, coordinator.spec):
+            continue
+        entities.append(JvcBinarySensor(coordinator, description))
+
+    async_add_entities(entities)
 
 
 class JvcBinarySensor(JvcProjectorEntity, BinarySensorEntity):
