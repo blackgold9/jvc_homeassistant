@@ -83,5 +83,6 @@ class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         # Convert 0-100 back to 0.0-1.0 for the library
-        await self.device.set(self.entity_description.command, value / 100.0)
-        # We might want to trigger a refresh or optimistically update
+        await self.coordinator.async_execute_command(
+            lambda: self.device.set(self.entity_description.command, value / 100.0)
+        )
