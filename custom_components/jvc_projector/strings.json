@@ -87,12 +87,55 @@
           "d": "Mode D"
         }
       },
-      "laser_power": {
-        "name": "Laser Power",
+      "light_power": {
+        "name": "Light Power",
         "state": {
           "low": "Low",
-          "medium": "Medium",
-          "high": "High"
+          "mid": "Mid",
+          "high": "High",
+          "normal": "Normal"
+        }
+      },
+      "picture_mode": {
+        "name": "Picture Mode",
+        "state": {
+          "animation": "Animation",
+          "cinema": "Cinema",
+          "film": "Film",
+          "filmmaker-mode": "Filmmaker Mode",
+          "frame-adapt-hdr": "Frame Adapt HDR",
+          "frame-adapt-hdr2": "Frame Adapt HDR 2",
+          "frame-adapt-hdr3": "Frame Adapt HDR 3",
+          "hdr": "HDR",
+          "hdr1": "HDR 1",
+          "hdr10": "HDR10",
+          "hdr10-ll": "HDR10 (Low Latency)",
+          "hdr10+": "HDR10+",
+          "hdr2": "HDR 2",
+          "hlg": "HLG",
+          "hlg-ll": "HLG (Low Latency)",
+          "isf-day": "ISF Day",
+          "isf-night": "ISF Night",
+          "natural": "Natural",
+          "natural-ll": "Natural (Low Latency)",
+          "pana-pq": "Pana PQ",
+          "photo": "Photo",
+          "4k": "4K",
+          "reserved": "Reserved",
+          "sdr-1": "SDR 1",
+          "sdr-2": "SDR 2",
+          "stage": "Stage",
+          "3d": "3D",
+          "thx": "THX",
+          "thx-bright": "THX Bright",
+          "thx-dark": "THX Dark",
+          "user-1": "User 1",
+          "user-2": "User 2",
+          "user-3": "User 3",
+          "user-4": "User 4",
+          "user-5": "User 5",
+          "user-6": "User 6",
+          "vivid": "Vivid"
         }
       },
       "laser_dimming": {
