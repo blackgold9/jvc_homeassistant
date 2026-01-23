@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from jvcprojector import const
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -15,7 +13,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
 from .entity import JvcProjectorEntity
 
 
@@ -52,7 +50,7 @@ JVC_SENSORS = (
         enabled_default=False,
     ),
     JVCSensorEntityDescription(
-        key=const.KEY_HDR_CONTENT_TYPE,
+        key=const.KEY_CONTENT_TYPE,
         translation_key="jvc_hdr_content_type",
         device_class=SensorDeviceClass.ENUM,
         entity_category=EntityCategory.DIAGNOSTIC,

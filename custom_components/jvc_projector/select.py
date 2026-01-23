@@ -6,13 +6,13 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Final
 
-from jvcprojector.projector import JvcProjector, const
+from jvcprojector.projector import JvcProjector
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
 from .entity import JvcProjectorEntity
 
 
@@ -27,11 +27,12 @@ class JvcProjectorSelectDescription(SelectEntityDescription):
 # note low latency is intentionally excluded because you can't just turn it on you need to meet conditions first so you should instead switch picture modes
 OPTIONS: Final[dict[str, list[str]]] = {
     "input": const.VAL_FUNCTION_INPUT,
-    "eshift": const.VAL_TOGGLE,
+    "eshift": const.VAL_ESHIFT,
     "installation_mode": const.VAL_INSTALLATION_MODE,
     "anamorphic": const.VAL_ANAMORPHIC,
-    "laser_power": const.VAL_LASER_POWER,
+    "light_power": const.VAL_LIGHT_POWER,
     "laser_dimming": const.VAL_LASER_DIMMING,
+    "picture_mode": const.VAL_PICTURE_MODE,
 }
 
 
@@ -39,10 +40,14 @@ OPTIONS: Final[dict[str, list[str]]] = {
 def create_select_command(key: str) -> Callable[[JvcProjector, str], Awaitable[None]]:
     """Create a command function for a select."""
 
-    async def command(device: JvcProjector, option: str) -> None:
-        await device.send_command(key, option)
+    async def command_fn(device: JvcProjector, option: str) -> None:
+        if key in const.COMMANDS:
+             await device.set(const.COMMANDS[key], option)
+        else:
+             # Fallback if key missing (should not happen if configured correctly)
+             raise ValueError(f"Unknown command for select: {key}")
 
-    return command
+    return command_fn
 
 
 # create a select for each option defined

@@ -28,10 +28,10 @@ class JvcProjectorEntity(CoordinatorEntity[JvcProjectorDataUpdateCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.unique_id)},
             name=NAME,
-            model=self.device.model,
+            model=coordinator.model,
             manufacturer=MANUFACTURER,
-            sw_version=self.device.version,
-            connections={(CONNECTION_NETWORK_MAC, self.device.mac)},
+            sw_version=coordinator.version,
+            connections={(CONNECTION_NETWORK_MAC, coordinator.mac)},
         )
 
     @property

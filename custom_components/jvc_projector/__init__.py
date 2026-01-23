@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from jvcprojector.device import JvcProjectorAuthError
-from jvcprojector.projector import JvcProjector, JvcProjectorConnectError
+from jvcprojector import command, error
+from jvcprojector.projector import JvcProjector
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -25,7 +25,13 @@ _LOGGER = logging.getLogger(__name__)
 
 JVCConfigEntry = ConfigEntry[JvcProjectorDataUpdateCoordinator]
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.REMOTE, Platform.SELECT, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.REMOTE,
+    Platform.SELECT,
+    Platform.SENSOR,
+]
 
 
 
@@ -40,26 +46,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: JVCConfigEntry) -> bool:
         password=entry.data[CONF_PASSWORD],
     )
     
+    mac = None
+    model = None
+    version = None
+
     # Initial connection with proper cleanup on failure
     try:
         _LOGGER.debug("Setting up JVC Projector at %s", host)
-        await asyncio.wait_for(device.connect(True), timeout=30)
+        await asyncio.wait_for(device.connect(), timeout=30)
+
+        # Fetch device info
+        mac = await device.get(command.MacAddress)
+        try:
+            model = await device.get(command.ModelName)
+        except Exception as e:
+            _LOGGER.debug("Failed to get model name: %s", e)
+
+        try:
+            version = await device.get(command.Version)
+        except Exception as e:
+             _LOGGER.debug("Failed to get version: %s", e)
+
     except asyncio.TimeoutError:
         _LOGGER.error("Timeout connecting to %s during setup", host)
         await device.disconnect()
         raise ConfigEntryNotReady(
             f"Connection timeout to {host}"
         )
-    except JvcProjectorConnectError as err:
+    except error.JvcProjectorAuthError as err:
+        _LOGGER.error("Authentication failed for %s", host)
+        await device.disconnect()
+        raise ConfigEntryAuthFailed("Password authentication failed") from err
+    except error.JvcProjectorError as err:
         _LOGGER.error("Failed to connect to %s during setup: %s", host, err)
         await device.disconnect()
         raise ConfigEntryNotReady(
             f"Unable to connect to {host}"
         ) from err
-    except JvcProjectorAuthError as err:
-        _LOGGER.error("Authentication failed for %s", host)
-        await device.disconnect()
-        raise ConfigEntryAuthFailed("Password authentication failed") from err
     except Exception as err:
         _LOGGER.error(
             "Unexpected error setting up %s: %s",
@@ -72,8 +95,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: JVCConfigEntry) -> bool:
             f"Unexpected error connecting to {host}"
         ) from err
     
+    if not mac:
+        _LOGGER.error("Could not determine MAC address for %s", host)
+        await device.disconnect()
+        raise ConfigEntryNotReady(f"Could not determine MAC address for {host}")
+
     # Create coordinator
-    coordinator = JvcProjectorDataUpdateCoordinator(hass, device)
+    coordinator = JvcProjectorDataUpdateCoordinator(hass, device, mac, model, version)
     entry.runtime_data = coordinator
     
     # Do initial data fetch
