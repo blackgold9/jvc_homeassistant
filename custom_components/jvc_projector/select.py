@@ -44,12 +44,8 @@ def create_select_command(key: str) -> Callable[[JvcProjector, str], Awaitable[N
 
     async def command_fn(device: JvcProjector, option: str) -> None:
         if key in const.COMMANDS:
-            try:
-                await device.set(const.COMMANDS[key], option)
-            except error.JvcProjectorError as err:
-                raise HomeAssistantError(
-                    f"Failed to set {key} to {option}: {err}"
-                ) from err
+            # We do NOT catch exceptions here anymore, allowing the coordinator to handle retries
+            await device.set(const.COMMANDS[key], option)
         else:
              # Fallback if key missing (should not happen if configured correctly)
              raise ValueError(f"Unknown command for select: {key}")
@@ -111,4 +107,6 @@ class JvcProjectorSelectEntity(JvcProjectorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        await self.entity_description.command(self.coordinator.device, option)
+        await self.coordinator.async_execute_command(
+            lambda: self.entity_description.command(self.coordinator.device, option)
+        )

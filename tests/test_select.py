@@ -83,8 +83,8 @@ from jvcprojector.error import JvcProjectorReadWriteTimeoutError
 from custom_components.jvc_projector.select import create_select_command
 
 @pytest.mark.asyncio
-async def test_select_command_timeout():
-    """Test that JvcProjectorReadWriteTimeoutError is handled and HomeAssistantError is raised."""
+async def test_select_command_propagates_error():
+    """Test that JvcProjectorReadWriteTimeoutError is propagated (to be handled by coordinator)."""
 
     # Mock the device
     mock_device = MagicMock()
@@ -95,9 +95,9 @@ async def test_select_command_timeout():
     # "picture_mode" is a valid key
     command_fn = create_select_command("picture_mode")
 
-    # Call the command function and expect it to raise HomeAssistantError
-    with pytest.raises(FakeHomeAssistantError) as excinfo:
+    # Call the command function and expect it to raise JvcProjectorReadWriteTimeoutError
+    # We no longer expect HomeAssistantError here, because the coordinator is responsible for wrapping/handling it
+    with pytest.raises(JvcProjectorReadWriteTimeoutError):
         await command_fn(mock_device, "Film")
 
-    assert "Failed to set picture_mode" in str(excinfo.value)
-    print("Confirmed that JvcProjectorReadWriteTimeoutError is wrapped in HomeAssistantError.")
+    print("Confirmed that JvcProjectorReadWriteTimeoutError propagates.")
