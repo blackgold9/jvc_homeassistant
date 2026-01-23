@@ -243,6 +243,11 @@
       "jvc_resolution": {
         "name": "Resolution"
       }
+    },
+    "number": {
+      "jvc_laser_power": {
+        "name": "Laser Power"
+      }
     }
   }
 }

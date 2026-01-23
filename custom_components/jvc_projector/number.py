@@ -29,7 +29,7 @@ NUMBERS: Final[tuple[JvcProjectorNumberDescription, ...]] = (
         key="laser_power",
         translation_key="jvc_laser_power",
         native_min_value=0,
-        native_max_value=46,
+        native_max_value=100,
         native_step=1,
         command=command.LaserPower,
     ),
@@ -71,12 +71,14 @@ class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
         value = self.coordinator.data.get(self.entity_description.key)
         if value is not None:
             try:
-                return float(value)
+                # The library returns 0.0-1.0, convert to 0-100
+                return float(value) * 100
             except ValueError:
                 return None
         return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        await self.device.set(self.entity_description.command, int(value))
+        # Convert 0-100 back to 0.0-1.0 for the library
+        await self.device.set(self.entity_description.command, value / 100.0)
         # We might want to trigger a refresh or optimistically update

@@ -240,6 +240,11 @@
                     "warming": "Warming"
                 }
             }
+        },
+        "number": {
+            "jvc_laser_power": {
+                "name": "Laser Power"
+            }
         }
     }
 }
