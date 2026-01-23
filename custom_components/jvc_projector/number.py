@@ -13,7 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const, capabilities
 from .entity import JvcProjectorEntity
 
 
@@ -44,9 +44,12 @@ async def async_setup_entry(
     """Set up the JVC Projector number platform from a config entry."""
     coordinator = entry.runtime_data
 
-    async_add_entities(
-        JvcProjectorNumber(coordinator, description) for description in NUMBERS
-    )
+    entities = []
+    for description in NUMBERS:
+        if capabilities.is_command_supported(description.command, coordinator.spec):
+            entities.append(JvcProjectorNumber(coordinator, description))
+
+    async_add_entities(entities)
 
 
 class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):

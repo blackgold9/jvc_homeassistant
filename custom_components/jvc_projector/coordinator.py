@@ -15,7 +15,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from . import const
+from . import const, capabilities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self.device = device
         self.mac = mac
         self.model = model
+        self.spec = capabilities.get_spec(model)
         self.version = version
         self.unique_id = format_mac(mac)
         self._last_operation_time: datetime | None = None
@@ -162,6 +163,9 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 state = {}
                 # Fetch all monitored attributes
                 for key, cmd_class in const.COMMANDS.items():
+                    if not capabilities.is_command_supported(cmd_class, self.spec):
+                        continue
+
                     try:
                         # Fetch individual attribute
                         val = await self.device.get(cmd_class)

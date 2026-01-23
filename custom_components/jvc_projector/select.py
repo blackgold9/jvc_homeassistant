@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const, capabilities
 from .entity import JvcProjectorEntity
 
 
@@ -57,18 +57,6 @@ def create_select_command(key: str) -> Callable[[JvcProjector, str], Awaitable[N
     return command_fn
 
 
-# create a select for each option defined
-SELECTS: Final[list[JvcProjectorSelectDescription]] = [
-    JvcProjectorSelectDescription(
-        key=key,
-        translation_key=key,
-        options=list(options),
-        command=create_select_command(key),
-    )
-    for key, options in OPTIONS.items()
-]
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: JVCConfigEntry,
@@ -76,10 +64,29 @@ async def async_setup_entry(
 ) -> None:
     """Set up the JVC Projector platform from a config entry."""
     coordinator = entry.runtime_data
+    entities = []
 
-    async_add_entities(
-        JvcProjectorSelectEntity(coordinator, description) for description in SELECTS
-    )
+    for key in OPTIONS:
+        cmd_cls = const.COMMANDS.get(key)
+        if not cmd_cls:
+            continue
+
+        if not capabilities.is_command_supported(cmd_cls, coordinator.spec):
+            continue
+
+        options = capabilities.get_command_options(cmd_cls, coordinator.spec)
+        if not options:
+            continue
+
+        description = JvcProjectorSelectDescription(
+            key=key,
+            translation_key=key,
+            options=options,
+            command=create_select_command(key),
+        )
+        entities.append(JvcProjectorSelectEntity(coordinator, description))
+
+    async_add_entities(entities)
 
 
 class JvcProjectorSelectEntity(JvcProjectorEntity, SelectEntity):
