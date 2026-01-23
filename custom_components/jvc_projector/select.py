@@ -6,10 +6,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Final
 
+from jvcprojector import error
 from jvcprojector.projector import JvcProjector
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const
@@ -42,7 +44,12 @@ def create_select_command(key: str) -> Callable[[JvcProjector, str], Awaitable[N
 
     async def command_fn(device: JvcProjector, option: str) -> None:
         if key in const.COMMANDS:
-             await device.set(const.COMMANDS[key], option)
+            try:
+                await device.set(const.COMMANDS[key], option)
+            except error.JvcProjectorError as err:
+                raise HomeAssistantError(
+                    f"Failed to set {key} to {option}: {err}"
+                ) from err
         else:
              # Fallback if key missing (should not happen if configured correctly)
              raise ValueError(f"Unknown command for select: {key}")
