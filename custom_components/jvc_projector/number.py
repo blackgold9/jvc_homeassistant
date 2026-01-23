@@ -74,14 +74,14 @@ class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
         value = self.coordinator.data.get(self.entity_description.key)
         if value is not None:
             try:
-                # Value from device is 0.0-1.0, convert to 0-100
-                return int(float(value) * 100)
+                # The library returns 0.0-1.0, convert to 0-100
+                return float(value) * 100
             except ValueError:
                 return None
         return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        # Value from UI is 0-100, convert to 0.0-1.0
+        # Convert 0-100 back to 0.0-1.0 for the library
         await self.device.set(self.entity_description.command, value / 100.0)
         # We might want to trigger a refresh or optimistically update
