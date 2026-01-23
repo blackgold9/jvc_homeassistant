@@ -50,6 +50,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self._lock = asyncio.Lock()
         self._retry_count = 0
         self._connected = False
+        self._shutdown_requested = False
         
         _LOGGER.debug(
             "Initialized coordinator for device %s (MAC: %s)",
@@ -62,12 +63,15 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
 
         Must be called with _lock acquired.
         """
-        if self._connected:
+        if self._connected or self._shutdown_requested:
             return
             
         _LOGGER.debug("Attempting to connect to %s", self.device.host)
 
         for attempt in range(MAX_RETRY_ATTEMPTS):
+            if self._shutdown_requested:
+                break
+
             try:
                 # Apply rate limiting
                 await self._apply_rate_limit()
@@ -106,9 +110,13 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 )
             
             if attempt < MAX_RETRY_ATTEMPTS - 1:
+                if self._shutdown_requested:
+                    break
                 await asyncio.sleep(RETRY_DELAY * (attempt + 1))
 
         # All attempts failed
+        if self._shutdown_requested:
+            raise UpdateFailed(f"Connection to {self.device.host} aborted due to shutdown")
         raise UpdateFailed(f"Unable to connect to {self.device.host} after {MAX_RETRY_ATTEMPTS} attempts")
 
     async def _apply_rate_limit(self) -> None:
@@ -299,6 +307,18 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and cleanup resources."""
         _LOGGER.debug("Shutting down coordinator for %s", self.device.host)
-        # We need to acquire lock to safely disconnect
-        async with self._lock:
-            await self._disconnect_device()
+        self._shutdown_requested = True
+
+        # We need to acquire lock to safely disconnect, but don't hang forever
+        try:
+            async with asyncio.timeout(2.0):
+                async with self._lock:
+                    await self._disconnect_device()
+        except asyncio.TimeoutError:
+            _LOGGER.warning("Could not acquire lock to shutdown gracefully, forcing disconnect")
+            # Force disconnect even if we think we are disconnected (stuck connecting)
+            try:
+                await self.device.disconnect()
+            except Exception as err:
+                _LOGGER.debug("Error forcing disconnect: %s", err)
+            self._connected = False
