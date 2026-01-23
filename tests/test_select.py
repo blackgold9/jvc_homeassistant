@@ -77,7 +77,18 @@ sys.modules["homeassistant.helpers.entity"] = mock_helpers_entity
 
 
 import pytest
-from jvcprojector.error import JvcProjectorReadWriteTimeoutError
+# Ensure JvcProjectorReadWriteTimeoutError is a valid exception class even if mocked
+try:
+    from jvcprojector.error import JvcProjectorReadWriteTimeoutError
+except ImportError:
+    class JvcProjectorReadWriteTimeoutError(Exception):
+        pass
+
+if not isinstance(JvcProjectorReadWriteTimeoutError, type) or not issubclass(JvcProjectorReadWriteTimeoutError, BaseException):
+    class JvcProjectorReadWriteTimeoutError(Exception):
+        pass
+    import jvcprojector.error
+    jvcprojector.error.JvcProjectorReadWriteTimeoutError = JvcProjectorReadWriteTimeoutError
 
 # import the module under test
 from custom_components.jvc_projector.select import create_select_command

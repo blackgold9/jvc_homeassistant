@@ -31,7 +31,20 @@ def test_component_imports():
 
     # 2. Mock jvcprojector library
     mock_jvc_pkg = MagicMock()
+    mock_jvc_pkg.__path__ = []
     sys.modules["jvcprojector"] = mock_jvc_pkg
+
+    # Mock submodules needed by capabilities.py
+    mock_cmd_pkg = MagicMock()
+    mock_cmd_pkg.__path__ = []
+    sys.modules["jvcprojector.command"] = mock_cmd_pkg
+
+    mock_base = MagicMock()
+    sys.modules["jvcprojector.command.base"] = mock_base
+
+    mock_cmd_mod = MagicMock()
+    mock_cmd_mod.SPECIFICATIONS = []
+    sys.modules["jvcprojector.command.command"] = mock_cmd_mod
 
     mock_jvc_device = MagicMock()
     sys.modules["jvcprojector.device"] = mock_jvc_device
