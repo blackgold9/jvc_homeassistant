@@ -25,6 +25,7 @@ class MockDataUpdateCoordinator:
         self.logger = logger
         self.name = name
         self.update_interval = update_interval
+        self.data = {}
 
 sys.modules["homeassistant.helpers.update_coordinator"].DataUpdateCoordinator = MockDataUpdateCoordinator
 sys.modules["homeassistant.helpers.update_coordinator"].UpdateFailed = Exception
@@ -53,6 +54,10 @@ sys.modules["jvcprojector.command.command"] = mock_command_command
 mock_command_command.SPECIFICATIONS = []
 
 mock_error = MagicMock()
+class JvcProjectorError(Exception): pass
+class JvcProjectorAuthError(JvcProjectorError): pass
+mock_error.JvcProjectorError = JvcProjectorError
+mock_error.JvcProjectorAuthError = JvcProjectorAuthError
 sys.modules["jvcprojector.error"] = mock_error
 
 mock_projector = MagicMock()
