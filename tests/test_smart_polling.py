@@ -145,8 +145,8 @@ async def test_smart_polling_standby(coordinator, mock_device):
     assert mock_device.get.call_count == 1
     mock_device.get.assert_called_with(MockPower)
 
-    # Verify interval is SLOW (5s)
-    assert coordinator.update_interval == timedelta(seconds=5)
+    # Verify interval is FAST (2s) to ensure quick wake-up detection
+    assert coordinator.update_interval == timedelta(seconds=2)
     assert coordinator._poll_count == 0
 
 @pytest.mark.asyncio

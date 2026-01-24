@@ -253,7 +253,8 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 if not is_on:
                     # Standby: Only check Power (already done)
                     # We might want to check minimal things if needed, but usually just power
-                    self.update_interval = INTERVAL_SLOW
+                    # Use FAST interval to quickly detect when it turns on
+                    self.update_interval = INTERVAL_FAST
                     self._poll_count = 0 # Reset counter
                 else:
                     # On: Check Fast keys every time
