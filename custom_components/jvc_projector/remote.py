@@ -33,7 +33,8 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
     """Representation of a JVC Projector device."""
 
     _attr_name = None
-    
+    _attr_translation_key = "power"
+
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the remote."""
         super().__init__(*args, **kwargs)
