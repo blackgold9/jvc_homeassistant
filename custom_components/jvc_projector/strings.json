@@ -291,6 +291,11 @@
       "jvc_laser_power": {
         "name": "Laser Power"
       }
+    },
+    "remote": {
+      "power": {
+        "name": "Power"
+      }
     }
   }
 }
