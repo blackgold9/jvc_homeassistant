@@ -20,13 +20,20 @@ from . import const, capabilities
 
 _LOGGER = logging.getLogger(__name__)
 
-INTERVAL_SLOW = timedelta(seconds=10)
-INTERVAL_FAST = timedelta(seconds=5)
+INTERVAL_SLOW = timedelta(seconds=5)
+INTERVAL_FAST = timedelta(seconds=2)
 CONNECTION_TIMEOUT = 30  # seconds
 MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 0.1  # seconds between operations
 
+# Commands to check frequently (active state)
+FAST_POLL_KEYS = {
+    const.KEY_POWER,
+    const.KEY_INPUT,
+    const.KEY_PICTURE_MODE,
+    const.KEY_SIGNAL,
+}
 
 class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
     """Data update coordinator for the JVC Projector integration."""
@@ -51,6 +58,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self._retry_count = 0
         self._connected = False
         self._shutdown_requested = False
+        self._poll_count = 0
         
         _LOGGER.debug(
             "Initialized coordinator for device %s (MAC: %s)",
@@ -225,30 +233,73 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 # Apply rate limiting
                 await self._apply_rate_limit()
                 
-                state = {}
-                # Fetch all monitored attributes
-                for key, cmd_class in const.COMMANDS.items():
+                # Determine which keys to fetch
+                # 1. Fetch Power first to determine state
+                try:
+                    power_val = await self.device.get(command.Power)
+                    # Update cache/state with power value
+                    # We will reconstruct the full state object to return
+                except Exception as e:
+                    # If power check fails, we can't do much
+                    _LOGGER.debug("Failed to get power status: %s", e)
+                    raise
+
+                current_state = {const.KEY_POWER: power_val}
+
+                is_on = power_val != command.Power.STANDBY
+
+                keys_to_fetch = set()
+
+                if not is_on:
+                    # Standby: Only check Power (already done)
+                    # We might want to check minimal things if needed, but usually just power
+                    # Use FAST interval to quickly detect when it turns on
+                    self.update_interval = INTERVAL_FAST
+                    self._poll_count = 0 # Reset counter
+                else:
+                    # On: Check Fast keys every time
+                    self.update_interval = INTERVAL_FAST
+                    keys_to_fetch.update(FAST_POLL_KEYS)
+
+                    # Check Slow keys every ~60 seconds (30 cycles * 2s)
+                    self._poll_count += 1
+                    if self._poll_count >= 30:
+                        keys_to_fetch.update(const.COMMANDS.keys())
+                        self._poll_count = 0
+                        _LOGGER.debug("Performing full update for %s", self.device.host)
+
+                # Fetch requested keys
+                for key in keys_to_fetch:
+                    if key == const.KEY_POWER:
+                        continue # Already fetched
+
+                    cmd_class = const.COMMANDS.get(key)
+                    if not cmd_class:
+                        continue
+
                     if not capabilities.is_command_supported(cmd_class, self.spec):
                         continue
 
                     try:
-                        # Fetch individual attribute
                         val = await self.device.get(cmd_class)
-                        state[key] = val
+                        current_state[key] = val
                     except error.JvcProjectorError as e:
                          # Some commands might fail if not supported or during startup
                         _LOGGER.debug("Failed to get %s: %s", key, e)
                     except Exception as e:
                         _LOGGER.debug("Unexpected error getting %s: %s", key, e)
 
-                _LOGGER.debug(
-                    "Successfully retrieved state for %s: power=%s",
-                    self.device.host,
-                    state.get("power", "unknown")
-                )
-                
                 # Reset retry count on success
                 self._retry_count = 0
+
+                # Merge with existing data if available to prevent sensor unavailable
+                # DataUpdateCoordinator stores previous data in self.data
+                if self.data:
+                    new_data = self.data.copy()
+                    new_data.update(current_state)
+                    return new_data
+
+                return current_state
                 
             except asyncio.TimeoutError:
                 _LOGGER.error("Timeout getting state from %s", self.device.host)
@@ -280,29 +331,6 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 )
                 await self._disconnect_device()
                 raise UpdateFailed(f"Unexpected error: {err}")
-
-            # Update polling interval based on power state
-            old_interval = self.update_interval
-            
-            # Check power state properly using command.Power constants if possible,
-            # but here state values are strings. const.VAL_POWER has the values.
-            # Assuming "standby" is the value for standby.
-            power_state = state.get("power")
-            # We can use command.Power.STANDBY if we want to be precise, but string check is safer if we know the string
-
-            if power_state and power_state != command.Power.STANDBY:
-                self.update_interval = INTERVAL_FAST
-            else:
-                self.update_interval = INTERVAL_SLOW
-            
-            if self.update_interval != old_interval:
-                _LOGGER.debug(
-                    "Changed update interval for %s to %s",
-                    self.device.host,
-                    self.update_interval
-                )
-
-            return state
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and cleanup resources."""
