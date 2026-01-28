@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import datetime, timedelta
 import logging
 from typing import Any
@@ -179,47 +179,70 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
             HomeAssistantError: If the command fails after retries.
         """
         async with self._lock:
-            last_error = None
-            max_retries = MAX_RETRY_ATTEMPTS if retry else 0
+            return await self._execute_with_retry(command_fn, retry)
 
-            for attempt in range(max_retries + 1):
-                try:
-                    await self._ensure_connected()
-                    await self._apply_rate_limit()
+    async def async_execute_batch(
+        self,
+        command_fns: Iterable[Callable[[], Awaitable[Any]]],
+        retry: bool = True
+    ) -> None:
+        """Execute a batch of commands with centralized locking.
 
-                    result = await command_fn()
-                    return result
+        Args:
+            command_fns: The iterable of async functions to execute.
+            retry: Whether to retry each command on failure.
+        """
+        async with self._lock:
+            for command_fn in command_fns:
+                await self._execute_with_retry(command_fn, retry)
 
-                except (error.JvcProjectorError, asyncio.TimeoutError) as err:
-                    last_error = err
-                    _LOGGER.warning(
-                        "Error executing command on %s (attempt %d/%d): %s",
-                        self.device.host,
-                        attempt + 1,
-                        max_retries + 1,
-                        err
-                    )
+    async def _execute_with_retry(
+        self,
+        command_fn: Callable[[], Awaitable[Any]],
+        retry: bool = True
+    ) -> Any:
+        """Execute a command with rate limiting and retry logic (lock must be held)."""
+        last_error = None
+        max_retries = MAX_RETRY_ATTEMPTS if retry else 0
 
-                    # Disconnect to force reconnection on next attempt
-                    await self._disconnect_device()
+        for attempt in range(max_retries + 1):
+            try:
+                await self._ensure_connected()
+                await self._apply_rate_limit()
 
-                    if attempt < max_retries:
-                        await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                result = await command_fn()
+                return result
 
-                except Exception as err:
-                    _LOGGER.error(
-                        "Unexpected error executing command on %s: %s",
-                        self.device.host,
-                        err,
-                        exc_info=True
-                    )
-                    await self._disconnect_device()
-                    raise HomeAssistantError(f"Unexpected error: {err}") from err
+            except (error.JvcProjectorError, asyncio.TimeoutError) as err:
+                last_error = err
+                _LOGGER.warning(
+                    "Error executing command on %s (attempt %d/%d): %s",
+                    self.device.host,
+                    attempt + 1,
+                    max_retries + 1,
+                    err
+                )
 
-            # If we get here, all retries failed
-            msg = f"Failed to execute command after {max_retries + 1} attempts: {last_error}"
-            _LOGGER.error(msg)
-            raise HomeAssistantError(msg) from last_error
+                # Disconnect to force reconnection on next attempt
+                await self._disconnect_device()
+
+                if attempt < max_retries:
+                    await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+
+            except Exception as err:
+                _LOGGER.error(
+                    "Unexpected error executing command on %s: %s",
+                    self.device.host,
+                    err,
+                    exc_info=True
+                )
+                await self._disconnect_device()
+                raise HomeAssistantError(f"Unexpected error: {err}") from err
+
+        # If we get here, all retries failed
+        msg = f"Failed to execute command after {max_retries + 1} attempts: {last_error}"
+        _LOGGER.error(msg)
+        raise HomeAssistantError(msg) from last_error
 
     async def _async_update_data(self) -> dict[str, str]:
         """Get the latest state data with proper connection management."""

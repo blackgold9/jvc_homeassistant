@@ -109,6 +109,8 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
         """Send remote commands to the device with proper error handling."""
         _LOGGER.debug("Sending commands '%s' to %s", command, self.device.host)
 
+        command_fns = []
+
         for cmd in command:
             _LOGGER.debug("Processing command '%s'", cmd)
 
@@ -122,31 +124,30 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
             cmd_name = cmd_name.strip().lower()
             value = value.strip()
 
-            try:
-                if cmd_name == "remote":
-                    if value not in REMOTE_COMMANDS:
-                        _LOGGER.error("Unknown remote command: %s", value)
-                        raise ValueError(f"Unknown remote command: {value}")
-                        
-                    await self.coordinator.async_execute_command(
-                        lambda: self.device.remote(REMOTE_COMMANDS[value])
-                    )
-                else:
-                    # Check if it's a known command class
-                    if cmd_name in COMMANDS:
-                        cmd_cls = COMMANDS[cmd_name]
-                        await self.coordinator.async_execute_command(
-                            lambda: self.device.set(cmd_cls, value)
-                        )
-                    else:
-                            _LOGGER.error("Unknown command: %s", cmd_name)
-                            raise ValueError(f"Unknown command: {cmd_name}")
+            if cmd_name == "remote":
+                if value not in REMOTE_COMMANDS:
+                    _LOGGER.error("Unknown remote command: %s", value)
+                    raise ValueError(f"Unknown remote command: {value}")
 
-            except Exception as err:
-                _LOGGER.error(
-                    "Failed to send command %s to %s: %s",
-                    cmd,
-                    self.device.host,
-                    err
+                command_fns.append(
+                    lambda v=value: self.device.remote(REMOTE_COMMANDS[v])
                 )
-                raise
+            elif cmd_name in COMMANDS:
+                cmd_cls = COMMANDS[cmd_name]
+                command_fns.append(
+                    lambda c=cmd_cls, v=value: self.device.set(c, v)
+                )
+            else:
+                _LOGGER.error("Unknown command: %s", cmd_name)
+                raise ValueError(f"Unknown command: {cmd_name}")
+
+        try:
+            await self.coordinator.async_execute_batch(command_fns)
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to send commands %s to %s: %s",
+                command,
+                self.device.host,
+                err
+            )
+            raise
