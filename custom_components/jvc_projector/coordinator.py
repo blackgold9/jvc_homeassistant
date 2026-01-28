@@ -59,6 +59,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self._connected = False
         self._shutdown_requested = False
         self._poll_count = 0
+        self.rate_limit_delay = RATE_LIMIT_DELAY
         
         _LOGGER.debug(
             "Initialized coordinator for device %s (MAC: %s)",
@@ -131,8 +132,8 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         """Apply rate limiting to prevent overwhelming the device."""
         if self._last_operation_time:
             elapsed = (datetime.now() - self._last_operation_time).total_seconds()
-            if elapsed < RATE_LIMIT_DELAY:
-                delay = RATE_LIMIT_DELAY - elapsed
+            if elapsed < self.rate_limit_delay:
+                delay = self.rate_limit_delay - elapsed
                 _LOGGER.debug("Rate limiting: waiting %.2f seconds", delay)
                 await asyncio.sleep(delay)
         

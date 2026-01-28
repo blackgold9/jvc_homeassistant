@@ -27,6 +27,7 @@ JVCConfigEntry = ConfigEntry[JvcProjectorDataUpdateCoordinator]
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.REMOTE,
     Platform.SELECT,
