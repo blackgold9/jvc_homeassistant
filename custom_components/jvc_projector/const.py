@@ -61,6 +61,9 @@ KEY_SOURCE = "signal" # Source binary sensor uses signal status
 KEY_LASER_VALUE = "laser_power" # Mapping laser value to laser_power command
 KEY_LASER_TIME = "lamp_time" # Mapping laser time to lamp time (LightTime)
 
+# Testing Keys
+KEY_TEST_RATE_LIMIT = "test_rate_limit"
+
 # Constants for states
 ON = "on"
 OFF = "off"
