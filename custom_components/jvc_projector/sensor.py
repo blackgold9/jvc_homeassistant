@@ -151,7 +151,30 @@ async def async_setup_entry(
 
         entities.append(JvcSensor(coordinator, description))
 
+    # Add update duration sensor
+    entities.append(JvcProjectorUpdateDurationSensor(coordinator))
+
     async_add_entities(entities)
+
+
+class JvcProjectorUpdateDurationSensor(JvcProjectorEntity, SensorEntity):
+    """Sensor to track the duration of manual updates."""
+
+    _attr_translation_key = "update_duration"
+    _attr_native_unit_of_measurement = "s"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Last Manual Update Duration"
+
+    def __init__(self, coordinator: JvcProjectorDataUpdateCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.unique_id}_manual_update_duration"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the duration of the last manual update."""
+        return self.coordinator.last_manual_update_duration
 
 
 class JvcSensor(JvcProjectorEntity, SensorEntity):

@@ -35,4 +35,4 @@ class JvcProjectorManualUpdateButton(JvcProjectorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        await self.coordinator.async_refresh()
+        await self.coordinator.async_refresh_benchmark()

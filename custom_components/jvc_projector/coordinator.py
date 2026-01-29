@@ -60,6 +60,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self._shutdown_requested = False
         self._poll_count = 0
         self.rate_limit_delay = RATE_LIMIT_DELAY
+        self.last_manual_update_duration: float | None = None
         
         _LOGGER.debug(
             "Initialized coordinator for device %s (MAC: %s)",
@@ -355,6 +356,15 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 )
                 await self._disconnect_device()
                 raise UpdateFailed(f"Unexpected error: {err}")
+
+    async def async_refresh_benchmark(self) -> None:
+        """Refresh data and measure duration for manual updates."""
+        start = datetime.now()
+        await self.async_refresh()
+        end = datetime.now()
+        self.last_manual_update_duration = (end - start).total_seconds()
+        # Force listeners to update to pick up the new duration value (even if data didn't change)
+        self.async_update_listeners()
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and cleanup resources."""
