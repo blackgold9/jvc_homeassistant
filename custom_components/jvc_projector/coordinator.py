@@ -35,10 +35,18 @@ FAST_POLL_KEYS = {
     const.KEY_SIGNAL,
 }
 
+
 class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
     """Data update coordinator for the JVC Projector integration."""
 
-    def __init__(self, hass: HomeAssistant, device: JvcProjector, mac: str, model: str | None = None, version: str | None = None) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        device: JvcProjector,
+        mac: str,
+        model: str | None = None,
+        version: str | None = None,
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass=hass,
@@ -59,12 +67,11 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self._connected = False
         self._shutdown_requested = False
         self._poll_count = 0
-        self.rate_limit_delay = RATE_LIMIT_DELAY
-        
+
         _LOGGER.debug(
             "Initialized coordinator for device %s (MAC: %s)",
             device.host,
-            self.unique_id
+            self.unique_id,
         )
 
     async def _ensure_connected(self) -> None:
@@ -74,7 +81,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         """
         if self._connected or self._shutdown_requested:
             return
-            
+
         _LOGGER.debug("Attempting to connect to %s", self.device.host)
 
         for attempt in range(MAX_RETRY_ATTEMPTS):
@@ -84,23 +91,22 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
             try:
                 # Apply rate limiting
                 await self._apply_rate_limit()
-                
+
                 # Set a timeout for connection
                 await asyncio.wait_for(
-                    self.device.connect(),
-                    timeout=CONNECTION_TIMEOUT
+                    self.device.connect(), timeout=CONNECTION_TIMEOUT
                 )
                 self._connected = True
                 self._retry_count = 0
                 _LOGGER.debug("Successfully connected to %s", self.device.host)
                 return
-                
+
             except asyncio.TimeoutError:
                 _LOGGER.warning(
                     "Connection timeout to %s (attempt %d/%d)",
                     self.device.host,
                     attempt + 1,
-                    MAX_RETRY_ATTEMPTS
+                    MAX_RETRY_ATTEMPTS,
                 )
             except error.JvcProjectorError as err:
                 _LOGGER.warning(
@@ -108,16 +114,16 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     self.device.host,
                     attempt + 1,
                     MAX_RETRY_ATTEMPTS,
-                    err
+                    err,
                 )
             except Exception as err:
                 _LOGGER.error(
                     "Unexpected error connecting to %s: %s",
                     self.device.host,
                     err,
-                    exc_info=True
+                    exc_info=True,
                 )
-            
+
             if attempt < MAX_RETRY_ATTEMPTS - 1:
                 if self._shutdown_requested:
                     break
@@ -125,18 +131,22 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
 
         # All attempts failed
         if self._shutdown_requested:
-            raise UpdateFailed(f"Connection to {self.device.host} aborted due to shutdown")
-        raise UpdateFailed(f"Unable to connect to {self.device.host} after {MAX_RETRY_ATTEMPTS} attempts")
+            raise UpdateFailed(
+                f"Connection to {self.device.host} aborted due to shutdown"
+            )
+        raise UpdateFailed(
+            f"Unable to connect to {self.device.host} after {MAX_RETRY_ATTEMPTS} attempts"
+        )
 
     async def _apply_rate_limit(self) -> None:
         """Apply rate limiting to prevent overwhelming the device."""
         if self._last_operation_time:
             elapsed = (datetime.now() - self._last_operation_time).total_seconds()
-            if elapsed < self.rate_limit_delay:
-                delay = self.rate_limit_delay - elapsed
+            if elapsed < RATE_LIMIT_DELAY:
+                delay = RATE_LIMIT_DELAY - elapsed
                 _LOGGER.debug("Rate limiting: waiting %.2f seconds", delay)
                 await asyncio.sleep(delay)
-        
+
         self._last_operation_time = datetime.now()
 
     async def _disconnect_device(self) -> None:
@@ -146,7 +156,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         """
         if not self._connected:
             return
-            
+
         try:
             _LOGGER.debug("Disconnecting from %s", self.device.host)
             await self.device.disconnect()
@@ -154,18 +164,13 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
             _LOGGER.debug("Disconnected from %s", self.device.host)
         except Exception as err:
             _LOGGER.error(
-                "Error disconnecting from %s: %s",
-                self.device.host,
-                err,
-                exc_info=True
+                "Error disconnecting from %s: %s", self.device.host, err, exc_info=True
             )
             # Mark as disconnected anyway to allow reconnection
             self._connected = False
 
     async def async_execute_command(
-        self,
-        command_fn: Callable[[], Awaitable[Any]],
-        retry: bool = True
+        self, command_fn: Callable[[], Awaitable[Any]], retry: bool = True
     ) -> Any:
         """Execute a command with centralized locking, rate limiting, and retry logic.
 
@@ -183,9 +188,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
             return await self._execute_with_retry(command_fn, retry)
 
     async def async_execute_batch(
-        self,
-        command_fns: Iterable[Callable[[], Awaitable[Any]]],
-        retry: bool = True
+        self, command_fns: Iterable[Callable[[], Awaitable[Any]]], retry: bool = True
     ) -> None:
         """Execute a batch of commands with centralized locking.
 
@@ -198,9 +201,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 await self._execute_with_retry(command_fn, retry)
 
     async def _execute_with_retry(
-        self,
-        command_fn: Callable[[], Awaitable[Any]],
-        retry: bool = True
+        self, command_fn: Callable[[], Awaitable[Any]], retry: bool = True
     ) -> Any:
         """Execute a command with rate limiting and retry logic (lock must be held)."""
         last_error = None
@@ -221,7 +222,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     self.device.host,
                     attempt + 1,
                     max_retries + 1,
-                    err
+                    err,
                 )
 
                 # Disconnect to force reconnection on next attempt
@@ -235,13 +236,15 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     "Unexpected error executing command on %s: %s",
                     self.device.host,
                     err,
-                    exc_info=True
+                    exc_info=True,
                 )
                 await self._disconnect_device()
                 raise HomeAssistantError(f"Unexpected error: {err}") from err
 
         # If we get here, all retries failed
-        msg = f"Failed to execute command after {max_retries + 1} attempts: {last_error}"
+        msg = (
+            f"Failed to execute command after {max_retries + 1} attempts: {last_error}"
+        )
         _LOGGER.error(msg)
         raise HomeAssistantError(msg) from last_error
 
@@ -249,14 +252,14 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         """Get the latest state data with proper connection management."""
         async with self._lock:
             _LOGGER.debug("Starting update for %s", self.device.host)
-            
+
             try:
                 # Ensure we're connected before attempting to get state
                 await self._ensure_connected()
-                
+
                 # Apply rate limiting
                 await self._apply_rate_limit()
-                
+
                 # Determine which keys to fetch
                 # 1. Fetch Power first to determine state
                 try:
@@ -279,15 +282,15 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     # We might want to check minimal things if needed, but usually just power
                     # Use FAST interval to quickly detect when it turns on
                     self.update_interval = INTERVAL_FAST
-                    self._poll_count = 0 # Reset counter
+                    self._poll_count = 0  # Reset counter
                 else:
                     # On: Check Fast keys every time
                     self.update_interval = INTERVAL_FAST
                     keys_to_fetch.update(FAST_POLL_KEYS)
 
-                    # Check Slow keys every ~60 seconds (30 cycles * 2s)
+                    # Check Slow keys every 10 seconds (5 cycles * 2s)
                     self._poll_count += 1
-                    if self._poll_count >= 30:
+                    if self._poll_count >= 5:
                         keys_to_fetch.update(const.COMMANDS.keys())
                         self._poll_count = 0
                         _LOGGER.debug("Performing full update for %s", self.device.host)
@@ -295,7 +298,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 # Fetch requested keys
                 for key in keys_to_fetch:
                     if key == const.KEY_POWER:
-                        continue # Already fetched
+                        continue  # Already fetched
 
                     cmd_class = const.COMMANDS.get(key)
                     if not cmd_class:
@@ -308,7 +311,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                         val = await self.device.get(cmd_class)
                         current_state[key] = val
                     except error.JvcProjectorError as e:
-                         # Some commands might fail if not supported or during startup
+                        # Some commands might fail if not supported or during startup
                         _LOGGER.debug("Failed to get %s: %s", key, e)
                     except Exception as e:
                         _LOGGER.debug("Unexpected error getting %s: %s", key, e)
@@ -324,34 +327,40 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     return new_data
 
                 return current_state
-                
+
             except asyncio.TimeoutError:
                 _LOGGER.error("Timeout getting state from %s", self.device.host)
                 await self._disconnect_device()
                 raise UpdateFailed(f"Timeout getting state from {self.device.host}")
-                
+
             except error.JvcProjectorError as err:
-                _LOGGER.error("Connection error getting state from %s: %s", self.device.host, err)
+                _LOGGER.error(
+                    "Connection error getting state from %s: %s", self.device.host, err
+                )
                 await self._disconnect_device()
                 self._retry_count += 1
-                
+
                 if self._retry_count >= MAX_RETRY_ATTEMPTS:
-                    raise UpdateFailed(f"Unable to connect to {self.device.host}: {err}")
+                    raise UpdateFailed(
+                        f"Unable to connect to {self.device.host}: {err}"
+                    )
                 else:
                     # Allow retry on next update
-                    raise UpdateFailed(f"Temporary connection issue with {self.device.host}")
-                    
+                    raise UpdateFailed(
+                        f"Temporary connection issue with {self.device.host}"
+                    )
+
             except error.JvcProjectorAuthError as err:
                 _LOGGER.error("Authentication error with %s", self.device.host)
                 await self._disconnect_device()
                 raise ConfigEntryAuthFailed("Password authentication failed") from err
-                
+
             except Exception as err:
                 _LOGGER.error(
                     "Unexpected error getting state from %s: %s",
                     self.device.host,
                     err,
-                    exc_info=True
+                    exc_info=True,
                 )
                 await self._disconnect_device()
                 raise UpdateFailed(f"Unexpected error: {err}")
@@ -367,7 +376,9 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 async with self._lock:
                     await self._disconnect_device()
         except asyncio.TimeoutError:
-            _LOGGER.warning("Could not acquire lock to shutdown gracefully, forcing disconnect")
+            _LOGGER.warning(
+                "Could not acquire lock to shutdown gracefully, forcing disconnect"
+            )
             # Force disconnect even if we think we are disconnected (stuck connecting)
             try:
                 await self.device.disconnect()

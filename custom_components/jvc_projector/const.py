@@ -27,7 +27,7 @@ COMMANDS = {
     "motion_enhance": command.MotionEnhance,
     "clear_motion_drive": command.ClearMotionDrive,
     "hdr_processing": command.HdrProcessing,
-    "resolution": command.Source, # Using Source for resolution info
+    "resolution": command.Source,  # Using Source for resolution info
     "signal": command.Signal,
     "low_latency": command.LowLatencyMode,
     "lamp_time": command.LightTime,
@@ -57,12 +57,11 @@ KEY_RESOLUTION = "resolution"
 KEY_SIGNAL = "signal"
 KEY_LOW_LATENCY = "low_latency"
 KEY_LAMP_TIME = "lamp_time"
-KEY_SOURCE = "signal" # Source binary sensor uses signal status
-KEY_LASER_VALUE = "laser_power" # Mapping laser value to laser_power command
-KEY_LASER_TIME = "lamp_time" # Mapping laser time to lamp time (LightTime)
+KEY_SOURCE = "signal"  # Source binary sensor uses signal status
+KEY_LASER_VALUE = "laser_power"  # Mapping laser value to laser_power command
+KEY_LASER_TIME = "lamp_time"  # Mapping laser time to lamp time (LightTime)
 
 # Testing Keys
-KEY_TEST_RATE_LIMIT = "test_rate_limit"
 
 # Constants for states
 ON = "on"
@@ -71,19 +70,35 @@ WARMING = "warming"
 SIGNAL = "signal"
 STANDBY = "standby"
 
+
 # Helper to extract values
 def _get_values(cls):
     excludes = {
-        'category', 'code', 'depends', 'describe', 'limp_mode', 'lookup',
-        'name', 'op_value', 'operation', 'operation_timeout', 'parameter',
-        'ref_value', 'reference', 'registry', 'supports', 'unload'
+        "category",
+        "code",
+        "depends",
+        "describe",
+        "limp_mode",
+        "lookup",
+        "name",
+        "op_value",
+        "operation",
+        "operation_timeout",
+        "parameter",
+        "ref_value",
+        "reference",
+        "registry",
+        "supports",
+        "unload",
     }
     return [
-        getattr(cls, a) for a in dir(cls)
-        if not a.startswith('_')
+        getattr(cls, a)
+        for a in dir(cls)
+        if not a.startswith("_")
         and isinstance(getattr(cls, a), str)
         and a not in excludes
     ]
+
 
 # Value lists for sensors and selects
 VAL_POWER = _get_values(command.Power)

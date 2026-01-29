@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Final
 
 from jvcprojector import command
-from jvcprojector.projector import JvcProjector
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, const, capabilities
+from . import JVCConfigEntry, JvcProjectorDataUpdateCoordinator, capabilities
 from .entity import JvcProjectorEntity
 
 
@@ -49,34 +47,7 @@ async def async_setup_entry(
         if capabilities.is_command_supported(description.command, coordinator.spec):
             entities.append(JvcProjectorNumber(coordinator, description))
 
-    # Add testing entity
-    entities.append(JvcProjectorRateLimitNumber(coordinator))
-
     async_add_entities(entities)
-
-class JvcProjectorRateLimitNumber(JvcProjectorEntity, NumberEntity):
-    """Number entity to control rate limit delay for testing."""
-
-    _attr_translation_key = "rate_limit_delay"
-    _attr_name = "Rate Limit Delay"
-    _attr_native_min_value = 0.0
-    _attr_native_max_value = 5.0
-    _attr_native_step = 0.1
-    _attr_native_unit_of_measurement = "s"
-
-    def __init__(self, coordinator: JvcProjectorDataUpdateCoordinator) -> None:
-        """Initialize."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.unique_id}_rate_limit_delay"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        return self.coordinator.rate_limit_delay
-
-    async def async_set_native_value(self, value: float) -> None:
-        """Update the current value."""
-        self.coordinator.rate_limit_delay = value
 
 
 class JvcProjectorNumber(JvcProjectorEntity, NumberEntity):
