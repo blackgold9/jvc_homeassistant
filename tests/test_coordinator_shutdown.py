@@ -66,6 +66,11 @@ sys.modules["jvcprojector.projector"] = mock_projector
 # Ensure we can import the module
 import custom_components.jvc_projector.coordinator as coord_module
 
+@pytest.fixture(autouse=True)
+def patch_capabilities():
+    with patch("custom_components.jvc_projector.capabilities.is_command_supported", return_value=True):
+        yield
+
 @pytest.mark.asyncio
 async def test_shutdown_timeout():
     """Test that async_shutdown proceeds even if lock is held."""

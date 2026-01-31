@@ -60,6 +60,12 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self.model = model
         self.spec = capabilities.get_spec(model)
         self.version = version
+        # Cache supported commands once during init
+        self.supported_commands = {
+            key
+            for key, cmd_class in const.COMMANDS.items()
+            if capabilities.is_command_supported(cmd_class, self.spec)
+        }
         self.unique_id = format_mac(mac)
         self._last_operation_time: datetime | None = None
         self._lock = asyncio.Lock()
@@ -300,11 +306,11 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     if key == const.KEY_POWER:
                         continue  # Already fetched
 
-                    cmd_class = const.COMMANDS.get(key)
-                    if not cmd_class:
+                    if key not in self.supported_commands:
                         continue
 
-                    if not capabilities.is_command_supported(cmd_class, self.spec):
+                    cmd_class = const.COMMANDS.get(key)
+                    if not cmd_class:
                         continue
 
                     try:
