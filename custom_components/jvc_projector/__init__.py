@@ -78,6 +78,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: JVCConfigEntry) -> bool:
         _LOGGER.error("Failed to connect to %s during setup: %s", host, err)
         await device.disconnect()
         raise ConfigEntryNotReady(f"Unable to connect to {host}") from err
+    except (OSError, ConnectionError) as err:
+        _LOGGER.warning(
+            "Network error connecting to %s: %s (will retry when device is available)",
+            host,
+            err,
+        )
+        await device.disconnect()
+        raise ConfigEntryNotReady(
+            f"Projector at {host} is unreachable; will retry when available"
+        ) from err
     except Exception as err:
         _LOGGER.error("Unexpected error setting up %s: %s", host, err, exc_info=True)
         await device.disconnect()
