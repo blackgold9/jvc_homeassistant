@@ -114,7 +114,7 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                     attempt + 1,
                     MAX_RETRY_ATTEMPTS,
                 )
-            except error.JvcProjectorError as err:
+            except (error.JvcProjectorError, OSError, ConnectionError) as err:
                 _LOGGER.warning(
                     "Connection failed to %s (attempt %d/%d): %s",
                     self.device.host,
@@ -221,7 +221,12 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 result = await command_fn()
                 return result
 
-            except (error.JvcProjectorError, asyncio.TimeoutError) as err:
+            except (
+                error.JvcProjectorError,
+                asyncio.TimeoutError,
+                OSError,
+                ConnectionError,
+            ) as err:
                 last_error = err
                 _LOGGER.warning(
                     "Error executing command on %s (attempt %d/%d): %s",
@@ -339,8 +344,8 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 await self._disconnect_device()
                 raise UpdateFailed(f"Timeout getting state from {self.device.host}")
 
-            except error.JvcProjectorError as err:
-                _LOGGER.error(
+            except (error.JvcProjectorError, OSError, ConnectionError) as err:
+                _LOGGER.warning(
                     "Connection error getting state from %s: %s", self.device.host, err
                 )
                 await self._disconnect_device()
