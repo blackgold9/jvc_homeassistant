@@ -26,7 +26,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the JVC Projector platform from a config entry."""
     coordinator = entry.runtime_data
-    async_add_entities([JvcProjectorRemote(coordinator)], True)
+    async_add_entities([JvcProjectorRemote(coordinator)])
 
 
 class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
@@ -42,8 +42,11 @@ class JvcProjectorRemote(JvcProjectorEntity, RemoteEntity):
     @property
     def is_on(self) -> bool:
         """Return True if entity is on."""
-        # Check against command.Power constants
-        return self.coordinator.data.get("power", command.Power.STANDBY) in [command.Power.ON, command.Power.WARMING]
+        data = self.coordinator.data
+        if data is None:
+            return False
+        power = data.get("power", command.Power.STANDBY)
+        return power in (command.Power.ON, command.Power.WARMING)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the device on with proper error handling."""

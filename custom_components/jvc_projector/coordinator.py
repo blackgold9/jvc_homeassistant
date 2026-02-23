@@ -22,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 INTERVAL_SLOW = timedelta(seconds=5)
 INTERVAL_FAST = timedelta(seconds=2)
+INTERVAL_WARMING = timedelta(seconds=0.5)
 CONNECTION_TIMEOUT = 30  # seconds
 MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY = 2  # seconds
@@ -285,12 +286,16 @@ class JvcProjectorDataUpdateCoordinator(DataUpdateCoordinator[dict[str, str]]):
                 current_state = {const.KEY_POWER: power_val}
 
                 is_on = power_val != command.Power.STANDBY
+                is_warming = power_val == command.Power.WARMING
 
                 keys_to_fetch = set()
 
-                if not is_on:
+                if is_warming:
+                    # Warming: Poll power aggressively to catch when it completes
+                    self.update_interval = INTERVAL_WARMING
+                    self._poll_count = 0  # Reset counter
+                elif not is_on:
                     # Standby: Only check Power (already done)
-                    # We might want to check minimal things if needed, but usually just power
                     # Use FAST interval to quickly detect when it turns on
                     self.update_interval = INTERVAL_FAST
                     self._poll_count = 0  # Reset counter
